@@ -1,0 +1,81 @@
+# -*- coding: utf-8 -*-
+import os
+import threading
+import Queue
+import Tkinter as tk
+import tkFileDialog as filedialog
+
+class Application(tk.Frame):
+    def __init__(self, master=None):
+        tk.Frame.__init__(self, master)
+        self.pack()
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.dir_label = tk.Label(self, text="Select directory:")
+        self.dir_label.pack()
+        self.dir_path = tk.StringVar()
+        self.dir_entry = tk.Entry(self, textvariable=self.dir_path, width=50)
+        self.dir_entry.pack()
+        self.browse_button = tk.Button(self, text="Browse", command=self.browse)
+        self.browse_button.pack()
+
+        self.type_label = tk.Label(self, text="File type:")
+        self.type_label.pack()
+        self.type_entry = tk.Entry(self, width=20)
+        self.type_entry.pack()
+
+        self.search_button = tk.Button(self, text="Search", command=self.search)
+        self.search_button.pack()
+
+        self.results_label = tk.Label(self, text="Results:")
+        self.results_label.pack()
+        self.results_listbox = tk.Listbox(self, width=80, height=20)
+        self.results_listbox.pack()
+
+    def browse(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            self.dir_path.set(directory)
+
+    def search(self):
+        directory = self.dir_path.get()
+        file_type = self.type_entry.get()
+        self.results_listbox.delete(0, tk.END)
+
+        if not directory or not file_type:
+            return
+
+        self.queue = Queue.Queue()
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(target=self.worker)
+        self.thread.start()
+
+    def worker(self):
+        directory = self.dir_path.get()
+        file_type = self.type_entry.get()
+
+        for root, dirs, files in os.walk(directory):
+            for filename in files:
+                if self.stop_event.is_set():
+                    return
+
+                if filename.endswith(file_type):
+                    self.queue.put(os.path.join(root, filename))
+
+        self.display_results()
+
+    def display_results(self):
+        while not self.queue.empty():
+            self.results_listbox.insert(tk.END, self.queue.get())
+
+    def stop(self):
+        if hasattr(self, 'stop_event'):
+            self.stop_event.set()
+
+        if hasattr(self, 'thread'):
+            self.thread.join()
+
+root = tk.Tk()
+app = Application(master=root)
+app.mainloop()

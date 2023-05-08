@@ -1,0 +1,65 @@
+import os
+import threading
+import time
+import Tkinter as tk
+import tkFileDialog
+
+class FileSearchGUI(object):
+    def __init__(self, master):
+        self.master = master
+        master.title("File Search")
+
+        self.label_path = tk.Label(master, text="Folder Path:")
+        self.label_path.grid(row=0, column=0)
+
+        self.entry_path = tk.Entry(master)
+        self.entry_path.grid(row=0, column=1)
+
+        self.button_browse = tk.Button(master, text="Browse", command=self.browse_folder)
+        self.button_browse.grid(row=0, column=2)
+
+        self.label_name = tk.Label(master, text="File Name:")
+        self.label_name.grid(row=1, column=0)
+
+        self.entry_name = tk.Entry(master)
+        self.entry_name.grid(row=1, column=1)
+
+        self.button_search = tk.Button(master, text="Search", command=self.search_files)
+        self.button_search.grid(row=1, column=2)
+
+        self.text_result = tk.Text(master, width=50, height=10)
+        self.text_result.grid(row=2, column=0, columnspan=3)
+
+    def browse_folder(self):
+        folder_path = tkFileDialog.askdirectory()
+        self.entry_path.delete(0, tk.END)
+        self.entry_path.insert(0, folder_path)
+
+    def search_files(self):
+        self.text_result.delete(1.0, tk.END)
+        folder_path = self.entry_path.get()
+        file_name = self.entry_name.get()
+        file_ext = os.path.splitext(file_name)[1]
+        file_name = os.path.splitext(file_name)[0]
+        self.text_result.insert(tk.END, "Searching...\n")
+        t = threading.Thread(target=self.search_files_thread, args=(folder_path, file_name, file_ext))
+        t.start()
+
+    def search_files_thread(self, folder_path, file_name, file_ext):
+        matches = []
+        for root, dirs, files in os.walk(folder_path):
+            for name in files:
+                if name.startswith(file_name) and name.endswith(file_ext):
+                    matches.append(os.path.join(root, name))
+        if matches:
+            self.text_result.insert(tk.END, "Found files:\n")
+            for file_path in matches:
+                self.text_result.insert(tk.END, file_path + "\n")
+        else:
+            self.text_result.insert(tk.END, "No files found.\n")
+        self.text_result.insert(tk.END, "Search completed.\n")
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    gui = FileSearchGUI(root)
+    root.mainloop()

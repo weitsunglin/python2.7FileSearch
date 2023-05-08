@@ -1,0 +1,74 @@
+# -*- coding: utf-8 -*-
+import os
+import threading
+import Tkinter as tk
+import tkFileDialog as filedialog
+
+class FileSearchGUI(tk.Frame):
+    def __init__(self, master=None):
+        tk.Frame.__init__(self, master)
+        self.grid()
+        self.create_widgets()
+
+    def create_widgets(self):
+	
+	    # 設置GUI大小
+        self.master.minsize(width=1200, height=600)
+        self.master.maxsize(width=1200, height=600)
+        self.master.geometry("800x600")
+	
+        self.folder_label = tk.Label(self, text="搜尋目錄：")
+        self.folder_label.grid(row=0, column=0)
+        self.folder_path = tk.Entry(self, width=50)
+        self.folder_path.grid(row=0, column=1)
+        self.folder_button = tk.Button(self, text="瀏覽", command=self.browse_folder)
+        self.folder_button.grid(row=0, column=2, padx=200)
+
+        self.filetype_label = tk.Label(self, text="檔案類型：")
+        self.filetype_label.grid(row=1, column=0)
+        self.filetype_entry = tk.Entry(self, width=50)
+        self.filetype_entry.grid(row=1, column=1)
+
+        self.search_button = tk.Button(self, text="開始搜尋", command=self.start_search)
+        self.search_button.grid(row=2, column=1)
+
+        self.results_label = tk.Label(self, text="搜尋結果：")
+        self.results_label.grid(row=3, column=0)
+        self.results_listbox = tk.Listbox(self,  height=15, width=200)
+        self.results_listbox.grid(row=4, column=0, columnspan=3)
+        self.results_listbox.bind("<Double-Button-1>", self.open_file)
+
+    def browse_folder(self):
+        folder_path = filedialog.askdirectory()
+        self.folder_path.delete(0, tk.END)
+        self.folder_path.insert(0, folder_path)
+
+    def start_search(self):
+        folder_path = self.folder_path.get()
+        file_type = self.filetype_entry.get()
+        self.results_listbox.delete(0, tk.END)
+
+        search_thread = threading.Thread(target=self.search_files, args=(folder_path, file_type))
+        search_thread.start()
+
+    def search_files(self, folder_path, file_type):
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                if file.endswith(file_type):
+                    file_path = os.path.join(root, file).decode('Big5')
+                    self.results_listbox.insert(tk.END, file_path)
+
+    def open_file(self, event):
+        selected_item = self.results_listbox.curselection()
+        if selected_item:
+            file_path = self.results_listbox.get(selected_item[0])
+            if os.path.isdir(file_path):
+                os.startfile(file_path)
+            else:
+                os.startfile(os.path.dirname(file_path))
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    root.title("搜尋檔案")
+    app = FileSearchGUI(master=root)
+    app.mainloop()
